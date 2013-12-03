@@ -10,10 +10,10 @@ the toolbox works, and read the script to see how to create a
 presentation.
 
 The main file of the toolbox is mpres.m, which runs a presentation
-(passed in as an argumetn).  It provides functionality for navigation
+(passed in as an argument).  It provides functionality for navigating
 the presentation.
 
-The is a helper file mpresAnimate.m, which helps with creation of
+There is a helper file mpresAnimate.m, which helps with creation of
 animations.
 
 Running a presentation that is essentially a Matlab script is a risky
