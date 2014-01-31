@@ -51,7 +51,9 @@ function state = mpresAnimate(duration,varargin)
     global mpresState;
     global mpresEvent;
     global mpresStopButton;
-    
+    global mpresAvi;
+    global mpresH;
+
     tStart = tic;
  
     mpresState = 'animation';
@@ -95,8 +97,11 @@ function state = mpresAnimate(duration,varargin)
                 k = k+1;
                 hData = varargin{k};
                 k = k+1;
-                newData = varargin{k};
-                
+                if(iscell(varargin{k}))
+                    newData = varargin{k};
+                else
+                    newData{1} = varargin{k};
+                end
             case 'pos'
                 flagPos = 1;
                 k = k+1;
@@ -210,13 +215,21 @@ function state = mpresAnimate(duration,varargin)
        if(~flagResumeData)
            nPlots = length(hData);
            framedData = cell(1,nPlots);
+           oldFormat = cell(1,nPlots);
            for nr=1:nPlots
                [M,N] = size(newData{nr});
                oldData = zeros(M,N);
-               oldData(1,:) = get(hData(nr),'XData');
-               oldData(2,:) = get(hData(nr),'YData');
+               oldFormat{nr} = zeros(M,2);
+               xD = get(hData(nr),'XData');
+               oldFormat{nr}(1,:) = size(xD);
+               oldData(1,:) = xD(:)';
+               xD = get(hData(nr),'YData');
+               oldFormat{nr}(2,:) = size(xD);
+               oldData(2,:) = xD(:)';
                if(M>2)
-                   oldData(3,:) = get(hData(nr),'ZData');
+                   xD = get(hData(nr),'ZData');
+                   oldFormat{nr}(3,:) = size(xD);
+                   oldData(3,:) = xD(:)';
                end
                framedData{nr} = zeros(M,N,nFrames);
                for i=1:M
@@ -293,10 +306,13 @@ function state = mpresAnimate(duration,varargin)
             if(flagData)
                 nPlots = length(hData);
                 for nr=1:nPlots
-                   set(hData(nr),'XData',framedData{nr}(1,:,i));
-                   set(hData(nr),'YData',framedData{nr}(2,:,i));
+                   xD = framedData{nr}(1,:,i);
+                   set(hData(nr),'XData',reshape(xD,oldFormat{nr}(1,1),oldFormat{nr}(1,2)));
+                   xD = framedData{nr}(2,:,i);
+                   set(hData(nr),'YData',reshape(xD,oldFormat{nr}(2,1),oldFormat{nr}(2,2)));
                    if(size(framedData{nr},1) > 2)
-                       set(hData(nr),'ZData',framedData{nr}(3,:,i));
+                        xD = framedData{nr}(3,:,i);
+                       set(hData(nr),'ZData',reshape(xD,oldFormat{nr}(3,1),oldFormat{nr}(3,2)));
                    end                   
                 end
             end
@@ -320,6 +336,12 @@ function state = mpresAnimate(duration,varargin)
             end
             
             refresh;
+            
+            
+            if(~isempty(mpresAvi))
+               mpresAvi =  addframe(mpresAvi, getframe(mpresH));
+            end            
+            
             state.lastFrame = i;
 
             if(~strcmp(mpresEvent,'none'))
@@ -406,6 +428,7 @@ function state = mpresAnimate(duration,varargin)
     if(flagData)
         state.hData = hData;
         state.framedData = framedData;
+        state.oldFormat = oldFormat;
     end
 end
 

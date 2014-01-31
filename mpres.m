@@ -32,6 +32,8 @@ function pres = mpres(pres)
     global mpresEvent;
     global mpresStopButton;
     global mpresScreenDump;
+    global mpresAvi;
+    global mpresH;
     
     if(~exist('pres','var'))
         %Set presentation defaults
@@ -54,18 +56,21 @@ function pres = mpres(pres)
         
         pres.renderer = [];
         
+        pres.video = [];
+        pres.videoFS = 30;
+        
         return;
     end
 
     %Main figure
-    h=figure('KeyPressFcn',{@mpresCallback_KeyPress});
+    mpresH=figure('KeyPressFcn',{@mpresCallback_KeyPress});
     mpresScreenDump = 1;
-    set(h,'MenuBar','none','NumberTitle','off');
+    set(mpresH,'MenuBar','none','NumberTitle','off');
 
     if(isempty(pres.renderer))
-        set(h,'RendererMode','auto');
+        set(mpresH,'RendererMode','auto');
     else
-        set(h,'RendererMode','manual','Renderer',pres.renderer);
+        set(mpresH,'RendererMode','manual','Renderer',pres.renderer);
     end
         
     ht = [];
@@ -73,20 +78,20 @@ function pres = mpres(pres)
     if(isfield(pres,'position'))
         if(ischar(pres.position))
             if(strcmpi(pres.position,'fullscreen'))
-                set(h,'units','normalized','outerposition',[0 0 1 1])
-                set(h,'units','pixels');
+                set(mpresH,'units','normalized','outerposition',[0 0 1 1])
+                set(mpresH,'units','pixels');
             end
         else
-            set(h,'Position',pres.position);            
+            set(mpresH,'Position',pres.position);            
         end
     end
    
     if(isfield(pres,'bkgcolour'))
-       set(h,'Color',pres.bkgcolour);
+       set(mpresH,'Color',pres.bkgcolour);
     end
 
     if(isfield(pres,'title'))
-        set(h,'Name',pres.title);
+        set(mpresH,'Name',pres.title);
     end
     
     if(isfield(pres,'slidedata'))
@@ -104,6 +109,11 @@ function pres = mpres(pres)
         pres.fontSize = mpresGetFontSize();
     end
     
+    mpresAvi = [];
+    if(~isempty(pres.video))
+        mpresAvi = avifile(pres.video, 'fps', pres.videoFS);
+    end
+    
     nextSlide = 0;
     nextPhase = 0;
     mpresState = 'nextslide';
@@ -119,6 +129,10 @@ function pres = mpres(pres)
            switch mpresState
 
                case 'finished'
+                   if(~isempty(pres.video))
+                       mpresAvi = close(mpresAvi);
+                   end
+                   
                    close(gcf);
                    return;
                    
@@ -128,7 +142,7 @@ function pres = mpres(pres)
                        nextSlide = length(pres.slide);
                        mpresState = 'idle';
                    else
-                       clf(h);
+                       clf(mpresH);
                        ht = [];
                        if(pres.playButton)
                           cmd_play = uicontrol('Style','pushbutton','CData',playb_icon,'Position',[10 10 30 30], 'Callback', {@mpresCallback_NextButton});
@@ -183,7 +197,16 @@ function pres = mpres(pres)
                    
                case 'idle'
                    if(strcmp(mpresEvent,'none'))
-                       pause(0.5);
+                       pauseTime = 0.5;
+                       if(~isempty(pres.video))
+                           nFrames = round(pres.videoFS*pauseTime);
+                           for n=1:nFrames
+                               mpresAvi =  addframe(mpresAvi, getframe(mpresH));
+                           end
+                       end
+                       pause(pauseTime);
+                       
+                       
                    else
                        switch mpresEvent
                            case 'rightarrow'
@@ -219,10 +242,12 @@ function pres = mpres(pres)
                                end
                        end        
                        mpresEvent = 'none';
-                   end                   
+                   end  
                otherwise
                    error('Unknown satate ''%s''', mpresState);
                    
+               %aviobj = addframe(aviobj, getframe(gca));
+           
            end
        end
    end
@@ -317,7 +342,7 @@ function ht = mpresSlideTitle(titleStr,ht,fName,fSize)
     set(ht,'FontName',fName,'FontSize',fSize,'FontWeight','bold');
     set(ht,'String',titleStr);
     if(~isempty(hSave))
-        h=axes(hSave); %#ok<NASGU>
+        axes(hSave); %#ok<NASGU>
     end
 end
 
